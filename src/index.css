@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: 'Orbitron';
+  src: url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap');
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  @apply bg-deep-black text-monster-white m-0 min-h-screen overflow-hidden;
+}
+
+h1, h2, h3, h4, .cyberpunk-text {
+  font-family: 'Orbitron', sans-serif;
+}
