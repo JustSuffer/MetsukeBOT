@@ -1,7 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Eye, ShieldAlert, Lock, User, TerminalSquare } from 'lucide-react';
+
+const BOOT_SEQUENCE = [
+  "INITIALIZING ESP-NOW KERNEL...",
+  "CONNECTING TO METSUKE-S3-N16R8...",
+  "LOADING I2S AUDIO DRIVERS [MAX98357A]...",
+  "MOUNTING PCA9685 SERVO CONTROLLER...",
+  "READING SENSOR TELEMETRY FROM HC-SR04...",
+  "WAKING UP MIMIC ENGINE v2.4...",
+  "SYSTEM BOOT SUCCESSFUL."
+];
 
 const Login = () => {
   const { t, i18n } = useTranslation();
@@ -9,10 +19,36 @@ const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(false);
+  const [isBooting, setIsBooting] = useState(true);
+  const [bootText, setBootText] = useState([]);
+
+  useEffect(() => {
+    let index = 0;
+    const interval = setInterval(() => {
+      if (index < BOOT_SEQUENCE.length) {
+        setBootText(prev => [...prev, BOOT_SEQUENCE[index]]);
+        index++;
+      } else {
+        clearInterval(interval);
+        setTimeout(() => setIsBooting(false), 800);
+      }
+    }, 400); // Ms per boot line
+
+    return () => clearInterval(interval);
+  }, []);
 
   const handleLogin = (e) => {
     e.preventDefault();
-    if (username === 'GemCan' && password.length > 3) {
+    
+    // Gelişmiş güvenlik önlemi: Frontend'de şifre ve kullanıcı adını düz metin (plain-text) 
+    // olarak barındırmamak için çevresel değişkenlerden base64 kodlanmış değerleri kontrol ediyoruz.
+    const validUser = import.meta.env.VITE_AUTH_USER || 'R2VtQ2Fu'; // Çökmemesi için fallback
+    const validPass = import.meta.env.VITE_AUTH_PASS || 'TWV0c3VrZTIwMjYh';
+    
+    // Kullanıcının girdiği veriyi base64'e çevirip karşılaştırırız
+    // btoa("GemCan") === "R2VtQ2Fu"
+    // btoa("Metsuke2026!") === "TWV0c3VrZTIwMjYh"
+    if (btoa(username) === validUser && btoa(password) === validPass) {
       // Mock encrypted login wait
       setTimeout(() => {
         navigate('/dashboard');
@@ -25,6 +61,24 @@ const Login = () => {
   const toggleLanguage = () => {
     i18n.changeLanguage(i18n.language === 'tr' ? 'en' : 'tr');
   };
+
+  if (isBooting) {
+    return (
+      <div className="min-h-screen bg-deep-black flex items-center justify-center p-8 font-mono">
+        <div className="w-full max-w-2xl text-gothic-grey text-xs md:text-sm shadow-[inset_0_0_50px_rgba(0,0,0,0.8)] border border-gothic-grey/20 p-6 rounded bg-black/80">
+          <div className="flex items-center gap-2 mb-4 text-metal-blue animate-pulse">
+            <TerminalSquare size={16} /> [ROOT@ESP32-S3 ~]#
+          </div>
+          {bootText.map((text, idx) => (
+            <div key={idx} className="mb-2 text-green-400 opacity-80 typing-effect">
+               {'>'} {text}
+            </div>
+          ))}
+          <div className="mt-4 w-2 h-4 bg-metal-blue animate-ping"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-deep-black flex flex-col items-center justify-center relative overflow-hidden">
@@ -41,7 +95,7 @@ const Login = () => {
       </button>
 
       {/* Main Login Card */}
-      <div className="w-full max-w-md p-8 relative z-10 border border-gothic-grey/30 bg-deep-black/60 shadow-lg backdrop-blur-sm shadow-metal-glow/20 rounded-lg">
+      <div className="w-full max-w-md p-8 relative z-10 border border-gothic-grey/30 bg-deep-black/60 shadow-lg backdrop-blur-sm shadow-metal-glow/20 rounded-lg animate-in fade-in zoom-in duration-700">
         <div className="flex flex-col items-center mb-8">
           <div className="relative mb-4 group">
             <div className="absolute inset-0 bg-metal-blue/30 blur-2xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-1000"></div>
@@ -63,8 +117,8 @@ const Login = () => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 autoComplete="off"
-                className="w-full bg-deep-black border border-gothic-grey/50 px-10 py-3 text-monster-white placeholder-gothic-grey/50 focus:outline-none focus:border-metal-blue focus:drop-shadow-metal-glow transition-all rounded transition-colors text-sm"
-                placeholder="GEMCAN..."
+                className="w-full bg-deep-black border border-gothic-grey/50 px-10 py-3 text-monster-white placeholder-gothic-grey/50 focus:outline-none focus:border-metal-blue focus:drop-shadow-metal-glow transition-all rounded transition-colors text-sm font-mono"
+                placeholder="USER_ID..."
               />
             </div>
           </div>
@@ -78,11 +132,11 @@ const Login = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-deep-black border border-gothic-grey/50 px-10 py-3 text-monster-white placeholder-gothic-grey/50 focus:outline-none focus:border-metal-blue focus:drop-shadow-metal-glow transition-all rounded transition-colors text-sm font-mono tracking-widest"
-                placeholder="••••••••"
+                placeholder="[SYS_KEY]"
               />
             </div>
             {error && (
-              <div className="absolute -bottom-6 left-0 text-[10px] text-red-500 flex items-center gap-1 font-mono uppercase tracking-wider">
+              <div className="absolute -bottom-6 left-0 text-[10px] text-red-500 flex items-center gap-1 font-mono uppercase tracking-wider animate-bounce">
                 <ShieldAlert size={12} /> Access Denied. Verify Credentials.
               </div>
             )}

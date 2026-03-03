@@ -15,6 +15,9 @@ const Dashboard = () => {
     <div className="min-h-screen bg-deep-black text-monster-white flex flex-col p-4 md:p-8 font-inter overflow-x-hidden relative">
       {/* Heavy Cyberpunk Background Grid */}
       <div className="fixed inset-0 pointer-events-none opacity-5 bg-[linear-gradient(rgba(255,255,255,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[size:50px_50px]"></div>
+      
+      {/* CRT Scanline Effect */}
+      <div className="fixed inset-0 pointer-events-none z-50 bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.1)_50%)] bg-[length:100%_4px] opacity-40 mix-blend-overlay"></div>
 
       {/* Header Panel */}
       <header className="flex flex-col md:flex-row md:items-center justify-between border-b border-gothic-grey/40 pb-4 mb-6 relative z-10 gap-4">
