@@ -1,44 +1,80 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-// Default mock WebSocket URL for Metsuke ESP32-S3
 const WS_URL = 'ws://192.168.4.1/ws';
 
 export const useWebSocket = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [telemetry, setTelemetry] = useState({
-    distance: 145,
-    battery: 8.2,
-    signal: 98
+    distance: 0,
+    battery: 0,
+    signal: 0
   });
   const ws = useRef(null);
+  const reconnectTimeout = useRef(null);
 
-  useEffect(() => {
-    // In a real scenario, we establish a WS connection to the ESP32 here
-    // For Metsuke Controller demo/UI mock, we will simulate the connection
-    setIsConnected(true);
+  const connect = useCallback(() => {
+    if (ws.current) {
+      ws.current.close();
+    }
 
-    // Mock telemetry updates
-    const interval = setInterval(() => {
-      setTelemetry(prev => ({
-        ...prev,
-        distance: Math.max(10, Math.min(400, prev.distance + (Math.random() > 0.5 ? 2 : -2))),
-        signal: Math.max(20, Math.min(100, prev.signal + (Math.random() > 0.8 ? 1 : -1)))
-      }));
-    }, 2000);
+    console.log('[WebSocket] Connecting to Metsuke...', WS_URL);
+    ws.current = new WebSocket(WS_URL);
 
-    return () => {
-      clearInterval(interval);
-      if (ws.current) {
-        ws.current.close();
+    ws.current.onopen = () => {
+      console.log("[WebSocket] Metsuke'ye bağlandım! (Connected)");
+      setIsConnected(true);
+      if (reconnectTimeout.current) clearTimeout(reconnectTimeout.current);
+    };
+
+    ws.current.onclose = () => {
+      console.log('[WebSocket] Bağlantı koptu (Disconnected)');
+      setIsConnected(false);
+      // Try to reconnect after 3 seconds
+      reconnectTimeout.current = setTimeout(() => {
+        connect();
+      }, 3000);
+    };
+
+    ws.current.onerror = (error) => {
+      console.error('[WebSocket] Hata (Error)', error);
+      ws.current.close();
+    };
+
+    ws.current.onmessage = (event) => {
+      // Handle "distance" sent as string or JSON from ESP32
+      try {
+        const data = JSON.parse(event.data);
+        setTelemetry(prev => ({ ...prev, ...data }));
+      } catch (err) {
+        // Fallback for simple raw string messages e.g. distance value "145"
+        console.log("Robottan gelen veri:", event.data);
+        if (!isNaN(parseFloat(event.data))) {
+          setTelemetry(prev => ({ ...prev, distance: parseFloat(event.data) }));
+        }
       }
     };
   }, []);
 
+  useEffect(() => {
+    connect();
+
+    return () => {
+      if (reconnectTimeout.current) clearTimeout(reconnectTimeout.current);
+      if (ws.current) {
+        ws.current.onclose = null; // Prevent reconnection attempt on unmount
+        ws.current.close();
+      }
+    };
+  }, [connect]);
+
   const sendCommand = useCallback((command) => {
-    // Expected format e.g: {"type": "move", "dir": "forward", "speed": 255}
-    console.log('[WebSocket TX]', JSON.stringify(command));
+    console.log('[WebSocket TX]', command);
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify(command));
+      // Send command as string if it's already a string, or JSON stringify it if it's an object
+      const payload = typeof command === 'string' ? command : JSON.stringify(command);
+      ws.current.send(payload);
+    } else {
+      console.warn('[WebSocket TX Failed] Not connected to Metsuke!');
     }
   }, []);
 
